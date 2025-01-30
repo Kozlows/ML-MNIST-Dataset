@@ -8,32 +8,52 @@ class AI:
         self.layers = []
         self.layers.append(ReLU(784, 10))
 
-    def train(self, inputs):
-        pass
+    def train(self, inputs):  # To confirm if works
+        for batch in inputs:
+            labels, results = self.run(batch, der=True)
+            # cost = 1/2 * (labels - results) ** 2
+            der = labels - results
+            #print(f"Labels: {labels.shape}\nResults: {results.shape}")
+            #print(der)
+            for layer in self.layers[::-1]:
+                der = layer.backward(der)
+
 
     def test(self, inputs):
         for batch in inputs:
             self.run(batch)
 
-    def run(self, batch):
-        labels = np.array([line[0] for line in batch])
-        result = np.array([line[1:] for line in batch])
+    def run(self, batch, der=False):
+        labels = np.array([[0 if i != int(line[0]) else 1 for i in range(10)] for line in batch])
+        results = np.array([line[1:] for line in batch])
         for layer in self.layers:
-            result = layer.forward(result)
-        #print(result)
+            results = layer.forward(results, der)
+        return labels, results
 
 class Layer:
     def __init__(self, inputs, ouputs):  # The amount of inputs this layer will take in, and the amount of outputs this layer will return
         self.genNodes(inputs, ouputs)
+        self.rate = 0.05  # To further modify so its not static
 
     def forward(self, input, der=False):
-        print(f"Input Shape: {input.shape}\nWeights Shape: {self.w.shape}\nBias Shape: {self.b.shape}")
+        #print(f"Input Shape: {input.shape}\nWeights Shape: {self.w.shape}\nBias Shape: {self.b.shape}")
         computation = (input @ self.w) + self.b
-        print(f"Computation Shape: {computation.shape}")
+        #print(f"Computation Shape: {computation.shape}")
+        if der:
+            self.input = input
         return self.activation(computation, der)
 
-    def backward(self, input):
-        pass
+    def backward(self, der):  # Many problems here, to be fixed later
+        biasDer = der * self.actD  # Not too confident in this, especially in softmax since the shape will be different there by an entire dimension :p
+        print(biasDer.shape, der.shape, self.actD.shape, np.average(biasDer, axis=0).shape)
+        self.b -= self.rate * np.average(biasDer, axis=0)  # Not confident in this either
+        print(biasDer.shape, self.input.shape, self.w.shape)
+        weightsDer = self.input.T @ biasDer  # I kinda just assumed this based on nothing but their shapes, will have to look into it in more detail later
+        self.w -= self.rate * np.average(weightsDer, axis=0)  # I'm honestly just guessing at this point, more research required
+        print(biasDer.shape, self.w.shape)
+        return biasDer
+        #  return biasDer * self.w, except it somehow needs to make sense
+
 
     def genNodes(self, inputs, ouputs):
         return None
