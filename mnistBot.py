@@ -6,7 +6,10 @@ class AI:
 
     def setup(self):  # Layer(input amount, output amount)
         self.layers = []
-        self.layers.append(ReLU(784, 10))
+        #self.layers.append(ReLU(784, 16, first=True))
+        #self.layers.append(ReLU(16, 16))
+        #self.layers.append(SoftMax(16, 10))
+        self.layers.append(SoftMax(784, 10))
 
     def train(self, inputs):  # To confirm if works
         for batch in inputs:
@@ -20,8 +23,20 @@ class AI:
 
 
     def test(self, inputs):
+        correct = 0
+        total = 0
         for batch in inputs:
-            self.run(batch)
+            labels, results = self.run(batch)
+            labels, results = np.argmax(labels, axis=1), np.argmax(results, axis=1)
+            batchSize = len(batch)
+            total += batchSize
+            for i in range(batchSize):
+                if labels[i] == results[i]:
+                    correct += 1
+            print(f"{correct/total * 100:.5f}%")
+
+
+
 
     def run(self, batch, der=False):
         labels = np.array([[0 if i != int(line[0]) else 1 for i in range(10)] for line in batch])
@@ -31,28 +46,26 @@ class AI:
         return labels, results
 
 class Layer:
-    def __init__(self, inputs, ouputs):  # The amount of inputs this layer will take in, and the amount of outputs this layer will return
+    def __init__(self, inputs, ouputs, first=False):  # The amount of inputs this layer will take in, and the amount of outputs this layer will return
         self.genNodes(inputs, ouputs)
         self.rate = 0.05  # To further modify so its not static
+        self.first=False
 
     def forward(self, input, der=False):
-        #print(f"Input Shape: {input.shape}\nWeights Shape: {self.w.shape}\nBias Shape: {self.b.shape}")
         computation = (input @ self.w) + self.b
-        #print(f"Computation Shape: {computation.shape}")
         if der:
             self.input = input
         return self.activation(computation, der)
 
-    def backward(self, der):  # Many problems here, to be fixed later
-        biasDer = der * self.actD  # Not too confident in this, especially in softmax since the shape will be different there by an entire dimension :p
-        print(biasDer.shape, der.shape, self.actD.shape, np.average(biasDer, axis=0).shape)
-        self.b -= self.rate * np.average(biasDer, axis=0)  # Not confident in this either
-        print(biasDer.shape, self.input.shape, self.w.shape)
-        weightsDer = self.input.T @ biasDer  # I kinda just assumed this based on nothing but their shapes, will have to look into it in more detail later
-        self.w -= self.rate * np.average(weightsDer, axis=0)  # I'm honestly just guessing at this point, more research required
-        print(biasDer.shape, self.w.shape)
-        return biasDer
-        #  return biasDer * self.w, except it somehow needs to make sense
+    def backward(self, der):
+        biasDer = self.activationDer(der)
+        self.b -= self.rate * np.average(biasDer, axis=0)
+        weightsDer = self.input.T @ biasDer
+        self.w -= self.rate * np.average(weightsDer, axis=0)
+
+        if not self.first:
+            der = biasDer @ self.w.T
+            return der
 
 
     def genNodes(self, inputs, ouputs):
@@ -71,6 +84,9 @@ class ReLU(Layer):
             self.actD = np.where(input > 0, 1, 0)
         return act
 
+    def activationDer(self, der):
+        return der * self.actD
+
     def genNodes(self, inputs, outputs):  # He Initialisation
         self.w = np.random.normal(0, np.sqrt(2 / inputs), (inputs, outputs))
         self.b = np.random.normal(0, np.sqrt(2 / inputs), (outputs))
@@ -79,16 +95,11 @@ class SoftMax(Layer):
     def activation(self, input, der=False):
         logits = np.exp(input - np.max(input, axis=1, keepdims=True))
         act = logits / np.sum(logits, axis=1, keepdims=True)
-
-        if der:
-            n, m = act.shape
-            self.actD = np.zeros(n, m, m)
-            for i, batch in enumerate(act):
-                jacobian = np.diag(batch) - np.outer(batch, batch)
-                self.actD[i] = jacobian
-
         return act
 
-    def genNodes(self, outputs, inputs):  # Xavier Initialisation
+    def activationDer(self, der):
+        return der  # Crazy confusing but this is actually correct
+
+    def genNodes(self, inputs, outputs):  # Xavier Initialisation
         self.w = np.random.normal(0, np.sqrt(1 / inputs), (inputs, outputs))
         self.b = np.random.normal(0, np.sqrt(1 / inputs), (outputs))
