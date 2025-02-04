@@ -3,26 +3,38 @@ import numpy as np
 class AI:
     def __init__(self):
         self.setup()
+        self.loss = []
 
     def setup(self):  # Layer(input amount, output amount)
         self.layers = []
-        self.layers.append(ReLU(784, 16, first=True))
-        self.layers.append(ReLU(16, 16))
-        self.layers.append(SoftMax(16, 10))
-        #self.layers.append(SoftMax(784, 10))
+        #self.layers.append(ReLU(784, 16, first=True))
+        #self.layers.append(ReLU(16, 16))
+        #self.layers.append(SoftMax(16, 10))
+        
+        self.layers.append(SoftMax(784, 10, first=True))
+        #self.layers.append(ReLU(784, 10, first=True))
+        #self.layers.append(Sigmoid(784, 10, first=True))
 
 
     def MSEDer(self, labels, results):
+        loss = 1/2 * np.mean(np.power(labels - results, 2))
+        self.loss.append(loss)
         return labels - results
 
     def crossEntropyDer(self, labels, results):
-        pass
-
+        epsilon = 1e-7  # Small value to prevent log(0)
+        loss = -np.sum(labels * np.log(results + epsilon)) / labels.shape[0]
+        self.loss.append(loss)
+        return results - labels
+        #print(der)
     def train(self, inputs):  # To confirm if works
         for batch in inputs:
             labels, results = self.run(batch, der=True)
-            der = self.MSEDer(labels, results)
             #der = self.crossEntropyDer(labels, results)
+            #print(der.shape)
+            #der = self.MSEDer(labels, results)
+            #print(der.shape)
+            der = self.crossEntropyDer(labels, results)
             #print(der)
             #print(f"Labels: {labels.shape}\nResults: {results.shape}")
             #print(der)
@@ -31,17 +43,14 @@ class AI:
 
 
     def test(self, inputs):
-        correct = 0
+        mean = 0
         total = 0
         for batch in inputs:
             labels, results = self.run(batch)
             labels, results = np.argmax(labels, axis=1), np.argmax(results, axis=1)
-            batchSize = len(batch)
-            total += batchSize
-            for i in range(batchSize):
-                if labels[i] == results[i]:
-                    correct += 1
-        print(f"{correct/total * 100:.5f}%")
+            total += 1
+            mean += np.mean(labels == results)
+        return f"{mean/total * 100:.5f}%"
 
 
 
@@ -57,7 +66,7 @@ class AI:
 class Layer:
     def __init__(self, inputs, ouputs, first=False):  # The amount of inputs this layer will take in, and the amount of outputs this layer will return
         self.genNodes(inputs, ouputs)
-        self.rate = 0.05  # To further modify so its not static
+        self.rate = 0.0001  # To further modify so its not static
         self.first=first
 
     def forward(self, input, der=False):
@@ -85,7 +94,7 @@ class Layer:
         return None
 
     def activation(self, input, der=False):
-        return input
+        return None
     
     def __str__(self):
         return f"Weights:\n{self.w}\nBiases:\n{self.b}"
@@ -101,6 +110,8 @@ class ReLU(Layer):
         return der * self.actD
 
     def genNodes(self, inputs, outputs):  # He Initialisation
+        #self.w = np.random.random((inputs, outputs))
+        #self.b = np.random.random(outputs)
         self.w = np.random.normal(0, np.sqrt(2 / inputs), (inputs, outputs))
         self.b = np.random.normal(0, np.sqrt(2 / inputs), (outputs))
 
@@ -111,8 +122,27 @@ class SoftMax(Layer):
         return act
 
     def activationDer(self, der):
-        return -der  # Crazy confusing but this is actually correct
+        return der 
 
     def genNodes(self, inputs, outputs):  # Xavier Initialisation
-        self.w = np.random.normal(0, np.sqrt(1 / inputs), (inputs, outputs))
-        self.b = np.random.normal(0, np.sqrt(1 / inputs), (outputs))
+        #self.w = np.random.random((inputs, outputs))
+        #self.b = np.random.random(outputs)
+
+        self.w = np.random.randn(inputs, outputs) * np.sqrt(1 / (inputs + outputs))
+        self.b = np.random.randn(outputs) * np.sqrt(1 / outputs)
+
+
+class Sigmoid(Layer):
+    def activation(self, input, der=False):
+        act = np.power(1 + np.exp(-input), -1)
+        if der:
+            self.act = act
+
+        return act
+
+    def activationDer(self, der):
+        return self.act * (1 - self.act)
+
+    def genNodes(self, inputs, outputs):  # Xavier Initialisation
+        self.w = np.random.randn(inputs, outputs) * np.sqrt(1 / (inputs + outputs))
+        self.b = np.random.randn(outputs) * np.sqrt(1 / outputs)
