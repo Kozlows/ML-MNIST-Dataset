@@ -69,18 +69,23 @@ class AI:
 class Layer:
     def __init__(self, inputs, ouputs, first=False):  # The amount of inputs this layer will take in, and the amount of outputs this layer will return
         self.genNodes(inputs, ouputs)
-        self.rate = 0.008  # To further modify so its not static
+        self.rate = 0.008
+        self.decay = 0.001
+        self.t = 0
         self.first=first
         self.setupAdam()
     
+    def updateRate(self):
+        self.lr = self.rate / (1 + self.decay * self.t)
+
     def setupAdam(self):
         self.mb = np.zeros(self.b.shape)
         self.vb = np.zeros(self.b.shape)
         self.mw = np.zeros(self.w.shape)
         self.vw = np.zeros(self.w.shape)
-        self.t = 0
     
     def adam(self, bder, wder):
+        self.updateRate()
         beta1 = 0.9
         beta2 = 0.99
         e = 1e-8
@@ -102,8 +107,8 @@ class Layer:
         vb_hat = self.vb / (1 - beta2 ** self.t)
         vw_hat = self.vw / (1 - beta2 ** self.t)
 
-        self.b -= self.rate * mb_hat / (np.sqrt(vb_hat) + e)
-        self.w -= self.rate * mw_hat / (np.sqrt(vw_hat) + e)
+        self.b -= self.lr * mb_hat / (np.sqrt(vb_hat) + e)
+        self.w -= self.lr * mw_hat / (np.sqrt(vw_hat) + e)
 
         #print(f"B:\n{thetaB.shape}")
         #print(f"W:\n{thetaW.shape}")
