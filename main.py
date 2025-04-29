@@ -13,7 +13,7 @@ for i in range(2):
 training = np.array(training)
 
 
-batchSize = 10
+batchSize = 1
 tests = tests.reshape(-1, batchSize, 785)
 training = training.reshape(-1, batchSize, 785)
 bot = Bot.AI()
