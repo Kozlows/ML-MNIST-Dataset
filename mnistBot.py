@@ -78,33 +78,32 @@ class Layer:
         self.vb = np.zeros(self.b.shape)
         self.mw = np.zeros(self.w.shape)
         self.vw = np.zeros(self.w.shape)
-        self.thetaB = np.ones(self.b.shape) * self.rate
-        self.thetaW = np.ones(self.w.shape) * self.rate
         self.t = 0
-        self.beta1 = 0
-        self.beta2 = 0
-        self.e = 1e-8
     
-    def updateTheta(self, bder, wder):
+    def adam(self, bder, wder):
+        beta1 = 0.9
+        beta2 = 0.99
+        e = 1e-8
+
         bder = np.mean(bder, axis=0)
         self.t += 1
-        self.mb = np.nan_to_num(self.beta1 * self.mb + (1 - self.beta1) * bder, nan=0.0)
-        self.mw = np.nan_to_num(self.beta1 * self.mw + (1 - self.beta1) * wder, nan=0.0)
-        self.vb = np.nan_to_num(self.beta2 * self.vb + (1 - self.beta2) * (bder ** 2), nan=0.0)
-        self.vw = (self.beta2 * self.vw) + ((1 - self.beta2) * (wder ** 2))
+        self.mb = beta1 * self.mb + (1 - beta1) * bder
+        self.mw = beta1 * self.mw + (1 - beta1) * wder
+        self.vb = beta2 * self.vb + (1 - beta2) * (bder ** 2)
+        self.vw = beta2 * self.vw + (1 - beta2) * (wder ** 2)
         #print(np.max(self.vw), np.min(self.vw))
         #print(self.vw)
         #input("Press Enter...")
         #if(np.min(self.vw) <= 0):
         #    print(wder)
         #    exit()
-        mb_hat = self.mb / (1 - self.beta1 ** self.t)
-        mw_hat = self.mw / (1 - self.beta1 ** self.t)
-        vb_hat = self.vb / (1 - self.beta2 ** self.t)
-        vw_hat = self.vw / (1 - self.beta2 ** self.t)
+        mb_hat = self.mb / (1 - beta1 ** self.t)
+        mw_hat = self.mw / (1 - beta1 ** self.t)
+        vb_hat = self.vb / (1 - beta2 ** self.t)
+        vw_hat = self.vw / (1 - beta2 ** self.t)
 
-        self.thetaB = self.rate * mb_hat / (np.sqrt(vb_hat) + self.e)
-        self.thetaW = self.rate * mw_hat / (np.sqrt(vw_hat) + self.e)
+        self.b -= self.rate * mb_hat / (np.sqrt(vb_hat) + e)
+        self.w -= self.rate * mw_hat / (np.sqrt(vw_hat) + e)
 
         #print(f"B:\n{thetaB.shape}")
         #print(f"W:\n{thetaW.shape}")
@@ -122,11 +121,12 @@ class Layer:
                                            # With the derivative of the activation function
         weightsDer = self.input.T @ biasDer / biasDer.shape[0]
         #self.updateTheta(biasDer, weightsDer)
-        self.b -= self.rate * np.mean(biasDer, axis=0)  #np.sum(biasDer, axis=0)  # the rate is defined earlier in my code as self.rate = 0.000001
+        self.adam(biasDer, weightsDer)
+        #self.b -= self.rate * np.mean(biasDer, axis=0)  #np.sum(biasDer, axis=0)  # the rate is defined earlier in my code as self.rate = 0.000001
         #print(self.input.T.shape, biasDer.shape, self.w.shape)
         
         #print(weightsDer.shape)
-        self.w -= self.rate * weightsDer #np.sum(weightsDer, axis=0)
+        #self.w -= self.rate * weightsDer #np.sum(weightsDer, axis=0)
         #print(biasDer.shape, self.b.shape, self.input.T.shape, weightsDer.shape, self.w.shape)
 
         if not self.first:  # This just checks if its the first layer in the forward pass
