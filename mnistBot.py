@@ -91,8 +91,8 @@ class Layer:
     def backward(self, der):  # backward pass of derivative, for backpropagation
         biasDer = self.activationDer(der)  # gets the bias derivative based on input derivative and the activation layers derivative
         weightsDer = self.input.T @ biasDer / biasDer.shape[0]  # calculates the derivative of the weight, averaged over batch size
-        biasDer = np.mean(biasDer, axis=0)  # averages the bias derivative over batch size
-        self.adam(biasDer, weightsDer)  # using adam, updates the weights and biases using their respective derivatives
+        biasDerAvg = np.mean(biasDer, axis=0)  # averages the bias derivative over batch size; why does the code break if the variable name is biasDer???
+        self.adam(biasDerAvg, weightsDer)  # using adam, updates the weights and biases using their respective derivatives
 
         if not self.first:  # This just checks if its the first layer in the forward pass. Used to determine of the next derivative needs to be calculated or not
             der = biasDer @ self.w.T  # calculates this layers derivative
