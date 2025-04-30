@@ -71,7 +71,6 @@ class Layer:
         self.genNodes(inputs, ouputs)
         self.rate = 0.008
         self.decay = 0.001
-        self.dropout_rate = 0.2
         self.t = 0
         self.first=first
         self.setupAdam()
@@ -154,10 +153,6 @@ class ReLU(Layer):
     def activation(self, input, der=False):
         act = np.where(input > 0, input, 0)
         if der:
-            mask = np.random.rand(*act.shape) > self.dropout_rate
-            print(mask)
-            act *= make
-            act /= (1 - self.dropout_rate)
             self.actD = np.where(input > 0, 1, 0)
         return act
 
