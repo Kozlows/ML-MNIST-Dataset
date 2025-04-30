@@ -8,7 +8,7 @@ training = np.load("train.npy")
 
 #print(tests.shape, training.shape)
 
-batchSize = 10
+batchSize = 50
 tests = tests.reshape(-1, batchSize, 785)
 training = training.reshape(-1, batchSize, 785)
 
